@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dolin.digital</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; color: #fff; }
+#player-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+#player { width: 100%; height: 100%; }
+#overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); transition: opacity 0.3s; }
+#overlay.hidden { opacity: 0; pointer-events: none; }
+h1 { font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 0 20px #f00; animation: pulse 1.5s infinite; }
+@keyframes pulse { 50% { transform: scale(1.05); } }
+button.enter { font-size: 2rem; padding: 1rem 3rem; background: #e00; border: none; color: #fff; cursor: pointer; border-radius: 8px; font-weight: bold; }
+button.enter:hover { background: #f33; }
+#fake-controls { position: fixed; top: 20px; right: 20px; z-index: 20; display: flex; gap: 10px; }
+.control-btn { width: 48px; height: 48px; background: #333; border: 2px solid #666; color: #fff; font-size: 1.5rem; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; user-select: none; }
+.control-btn:hover { background: #555; }
+#close-btn { position: fixed; z-index: 30; }
+#volume-warning { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 0.5rem 1rem; border-radius: 4px; z-index: 15; font-size: 0.9rem; }
+#never { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; opacity: 0.3; pointer-events: none; z-index: 5; text-align: center; animation: fade 3s infinite; }
+@keyframes fade { 0%,100% { opacity: 0.2; } 50% { opacity: 0.6; } }
+</style>
+</head>
+<body>
+<div id="player-container">
+  <div id="player"></div>
+</div>
+
+<div id="never">NEVER GONNA GIVE YOU UP<br>NEVER GONNA LET YOU DOWN<br>NEVER GONNA RUN AROUND AND DESERT YOU</div>
+
+<div id="overlay">
+  <h1>dolin.digital</h1>
+  <p style="margin-bottom: 2rem; font-size: 1.2rem;">Click to enter the experience</p>
+  <button class="enter" id="enter-btn">ENTER</button>
+</div>
+
+<div id="fake-controls">
+  <button class="control-btn" id="mute-btn" title="Mute">🔇</button>
+  <button class="control-btn" id="close-btn" title="Close">✕</button>
+</div>
+
+<div id="volume-warning">VOLUME AT MAXIMUM • MUTE BUTTON IS DECORATIVE</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+let player;
+let isPlaying = false;
+let closeBtn = document.getElementById('close-btn');
+let muteBtn = document.getElementById('mute-btn');
+let overlay = document.getElementById('overlay');
+let enterBtn = document.getElementById('enter-btn');
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('player', {
+    height: '100%',
+    width: '100%',
+    videoId: 'dQw4w9WgXcQ',
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      showinfo: 0,
+      loop: 1,
+      playlist: 'dQw4w9WgXcQ'
+    },
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerReady(event) {
+  // Ready
+}
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    player.playVideo();
+  }
+  if (event.data === YT.PlayerState.PAUSED) {
+    // Immediately resume if they somehow pause
+    setTimeout(() => player.playVideo(), 100);
+  }
+}
+
+function startExperience() {
+  overlay.classList.add('hidden');
+  if (player && player.playVideo) {
+    player.playVideo();
+    player.unMute();
+    player.setVolume(100);
+    isPlaying = true;
+    // Keep forcing volume
+    setInterval(() => {
+      if (player && player.getVolume) {
+        if (player.getVolume() < 100) player.setVolume(100);
+        if (player.isMuted && player.isMuted()) player.unMute();
+      }
+    }, 200);
+  }
+  // Request fullscreen
+  document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+enterBtn.addEventListener('click', startExperience);
+// Also allow any click on overlay
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay || e.target === enterBtn) startExperience();
+});
+
+// Mute button does nothing useful
+muteBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (player) {
+    player.unMute();
+    player.setVolume(100);
+  }
+  // Visual feedback that it "worked" but didn't
+  muteBtn.textContent = '🔇';
+  setTimeout(() => muteBtn.textContent = '🔇', 200);
+  // Shake it
+  muteBtn.style.transform = 'scale(1.2)';
+  setTimeout(() => muteBtn.style.transform = '', 100);
+});
+
+// Close button runs away
+function moveCloseButton() {
+  const w = window.innerWidth - 60;
+  const h = window.innerHeight - 60;
+  const x = Math.random() * w;
+  const y = Math.random() * h;
+  closeBtn.style.left = x + 'px';
+  closeBtn.style.top = y + 'px';
+  closeBtn.style.right = 'auto';
+}
+
+closeBtn.addEventListener('mouseenter', moveCloseButton);
+closeBtn.addEventListener('mousemove', moveCloseButton);
+closeBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  moveCloseButton();
+  // Spawn more close buttons
+  for (let i = 0; i < 3; i++) {
+    const clone = closeBtn.cloneNode(true);
+    clone.id = '';
+    document.body.appendChild(clone);
+    clone.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+    clone.style.top = Math.random() * (window.innerHeight - 60) + 'px';
+    clone.addEventListener('mouseenter', () => {
+      clone.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+      clone.style.top = Math.random() * (window.innerHeight - 60) + 'px';
+    });
+    clone.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      clone.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+      clone.style.top = Math.random() * (window.innerHeight - 60) + 'px';
+    });
+  }
+});
+
+// ESC key also moves the button and tries to prevent leaving
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    e.preventDefault();
+    moveCloseButton();
+    // More buttons
+    const clone = closeBtn.cloneNode(true);
+    clone.id = '';
+    document.body.appendChild(clone);
+    clone.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+    clone.style.top = Math.random() * (window.innerHeight - 60) + 'px';
+  }
+  // Prevent other escape-like keys
+  if (e.key === 'F11' || e.key === 'F5') {
+    // don't prevent refresh entirely, but meh
+  }
+});
+
+// Prevent right click menu for extra annoyance
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Keep trying to play if stopped
+setInterval(() => {
+  if (isPlaying && player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+    player.playVideo();
+  }
+}, 500);
+
+// Initial position for close button
+closeBtn.style.position = 'fixed';
+closeBtn.style.top = '20px';
+closeBtn.style.right = '80px';
+</script>
+</body>
+</html>
